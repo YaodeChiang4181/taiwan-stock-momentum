@@ -1,103 +1,35 @@
-import pandas as pd
+import os
 import requests
-from datetime import datetime
 
-WATCHLIST = [
-    ("2330", "台積電"),
-    ("2454", "聯發科"),
-    ("2308", "台達電"),
-    ("2382", "廣達"),
-    ("3231", "緯創"),
-    ("3661", "世芯-KY"),
-]
+TENANT_ID = os.getenv("TENANT_ID")
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-def get_twse_data(stock_no):
-
-    url = (
-        "https://www.twse.com.tw/exchangeReport/STOCK_DAY"
-    )
-
-    params = {
-        "response": "json",
-        "stockNo": stock_no
-    }
-
-    r = requests.get(
-        url,
-        params=params,
-        timeout=30
-    )
-
-    data = r.json()
-
-    closes = []
-
-    if "data" not in data:
-        return closes
-
-    for row in data["data"]:
-
-        try:
-            close_price = float(
-                row[6].replace(",", "")
-            )
-
-            closes.append(close_price)
-
-        except:
-            pass
-
-    return closes
-
-
-def calc_score(close):
-
-    if len(close) < 20:
-        return None
-
-    last = close[-1]
-
-    r5 = (last / close[-5] - 1) * 100
-    r10 = (last / close[-10] - 1) * 100
-    r20 = (last / close[0] - 1) * 100
-
-    return round(
-        r5 * 0.4 +
-        r10 * 0.3 +
-        r20 * 0.3,
-        2
-    )
-
-result = []
-
-for ticker, name in WATCHLIST:
-
-    closes = get_twse_data(ticker)
-
-    score = calc_score(closes)
-
-    if score is None:
-        continue
-
-    result.append({
-        "Date": datetime.today().strftime("%Y-%m-%d"),
-        "Ticker": ticker,
-        "Name": name,
-        "Market": "上市",
-        "Score": score
-    })
-
-df = pd.DataFrame(result)
-
-df = df.sort_values(
-    "Score",
-    ascending=False
+token_url = (
+    f"https://login.microsoftonline.com/"
+    f"{TENANT_ID}/oauth2/v2.0/token"
 )
 
-print(df)
-
-df.to_csv(
-    "momentum_ranking.csv",
-    index=False,
-    encoding="utf-8-sig"
+token = requests.post(
+    token_url,
+    data={
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default",
+        "grant_type": "client_credentials",
+    },
 )
+
+access_token = token.json()["access_token"]
+
+headers = {
+    "Authorization": f"Bearer {access_token}"
+}
+
+r = requests.get(
+    "https://graph.microsoft.com/v1.0/sites/ncu365.sharepoint.com:/sites/StockAnalysis",
+    headers=headers
+)
+
+print(r.status_code)
+print(r.text)
