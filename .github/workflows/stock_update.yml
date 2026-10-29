@@ -27,6 +27,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install -r requirements.txt
-
-      - run: python stock_update.py
+      - run: pip install -r .github/workflows/requirements.txt
+      
+      - run: python .github/workflows/stock_update.py
